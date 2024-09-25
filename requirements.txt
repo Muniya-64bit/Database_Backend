@@ -1,0 +1,7 @@
+mysql~=0.0.3
+mysql-connector-python~=9.0.0
+fastapi~=0.112.2
+pydantic~=2.8.2
+python-dotenv~=1.0.1
+PyJWT~=2.9.0
+passlib~=1.7.4

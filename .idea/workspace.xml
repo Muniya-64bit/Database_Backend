@@ -4,27 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7c4b9df3-02bf-42c3-ae0e-1cafd796cb9a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.env" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/backend.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/API/Leavings.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/API/employee.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/API/supervisor.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/API/users.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/classes/Leavings.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/classes/User.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/classes/employee.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/classes/supervisor.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/classes/token.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/core/security.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/qodana.yaml" afterDir="false" />
+    <list default="true" id="7c4b9df3-02bf-42c3-ae0e-1cafd796cb9a" name="Changes" comment="initial comment">
+      <change afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,24 +40,18 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.users.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/MUNIYA/Downloads/ballerina-intellij-idea-plugin-1.2.8.zip&quot;,
-    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.main.executor": "Run",
+    "Python.users.executor": "Run",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "C:/Users/MUNIYA/Downloads/ballerina-intellij-idea-plugin-1.2.8.zip",
+    "run.code.analysis.last.selected.profile": "pProject Default",
+    "settings.editor.selected.configurable": "project.propVCSSupport.CommitDialog"
   }
-}</component>
-  <component name="QodanaReportsService">
-    <option name="descriptions">
-      <ReportDescription localRun="true" path="C:\Users\MUNIYA\AppData\Local\Temp\qodana_output1\qodana.sarif.json" publishedReportLink="https://qodana.cloud/projects/3w472/reports/KxYvl" reportGuid="ab3d0b8a-db20-482a-8eaa-4bceb5be92b6" reportId="backend/qodana/2024-09-22" />
-      <ReportDescription localRun="true" path="C:\Users\MUNIYA\AppData\Local\Temp\qodana_output\qodana.sarif.json" reportGuid="97cff3e8-6226-4734-8c92-86603b42b19f" reportId="backend/qodana/2024-09-22" />
-    </option>
-  </component>
+}]]></component>
   <component name="RunManager">
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="backend" />
@@ -108,6 +84,9 @@
     </attachedChunks>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SvnConfiguration">
+    <configuration>C:\Users\MUNIYA\AppData\Roaming\Subversion</configuration>
+  </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="7c4b9df3-02bf-42c3-ae0e-1cafd796cb9a" name="Changes" comment="" />
@@ -116,7 +95,31 @@
       <option name="presentableId" value="Default" />
       <updated>1725190510950</updated>
     </task>
+    <task id="LOCAL-00001" summary="initial comment">
+      <option name="closed" value="true" />
+      <created>1727256745169</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1727256745169</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="initial comment" />
+    <option name="LAST_COMMIT_MESSAGE" value="initial comment" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
