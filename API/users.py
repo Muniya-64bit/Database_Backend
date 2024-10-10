@@ -1,12 +1,13 @@
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
-from classes.User import User, UserLogin,LoginResponse
-from pydantic import BaseModel
-from core.security import pwd_context, verify_password, create_access_token, get_current_active_user
-import mysql.connector
-import os
-from dotenv import load_dotenv
 import logging
+import os
+from datetime import datetime
+
+import mysql.connector
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from classes.User import User, UserLogin, LoginResponse
+from core.security import pwd_context, verify_password, create_access_token, get_current_active_user
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -16,19 +17,18 @@ router = APIRouter()
 
 # Database connection dependency
 load_dotenv()
+
+
 def get_db():
-    connection = mysql.connector.connect(
-        host=os.getenv('DB_HOST'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_NAME')
-    )
+    connection = mysql.connector.connect(host=os.getenv('DB_HOST'), user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'), database=os.getenv('DB_NAME'))
     cursor = connection.cursor(dictionary=True)
     try:
         yield cursor, connection
     finally:
         cursor.close()
         connection.close()
+
 
 # Pydantic model for access update
 
@@ -43,8 +43,7 @@ async def create_user(user: User, db=Depends(get_db)):
         # Insert the user data with optional nullable fields
         cursor.execute(
             "INSERT INTO users (username, password, Employee_ID,last_login_date,last_login_time) VALUES (%s, %s, %s,%s,%s)",
-            (user.username, hashed_password, user.employee_id,user.last_login_date,user.last_login_time)
-        )
+            (user.username, hashed_password, user.employee_id, user.last_login_date, user.last_login_time))
         connection.commit()
 
         # Fetch the newly created user to confirm
@@ -63,6 +62,7 @@ async def create_user(user: User, db=Depends(get_db)):
     except Exception as e:
         logger.error(f"Unexpected error during user registration: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
+
 
 # Endpoint to log in a user and generate an access token
 @router.post("/login", response_model=LoginResponse)
@@ -96,10 +96,7 @@ async def login_user(user: UserLogin, db=Depends(get_db)):
     logger.info(f"User {user.username} logged in successfully.")
 
     # Return response with username and token
-    return LoginResponse(
-        username=db_user['username'],
-        token=access_token
-    )
+    return LoginResponse(username=db_user['username'], token=access_token)
 
 
 # Endpoint to update another user's access (admin or users with specific access only)
@@ -150,11 +147,7 @@ async def login_user(user: UserLogin, db=Depends(get_db)):
 
 # Endpoint to view a user's profile based on access control
 @router.get("/user/{username}/profile", status_code=status.HTTP_200_OK)
-async def view_user_profile(
-    username: str,
-    db=Depends(get_db),
-    current_user=Depends(get_current_active_user)
-):
+async def view_user_profile(username: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
     cursor, _ = db
     cursor.execute("SELECT * FROM Users WHERE User_ID = %s", (username,))
     user_profile = cursor.fetchone()
@@ -171,13 +164,10 @@ async def view_user_profile(
     logger.info(f"User {current_user['username']} viewed profile of {username}")
     return {"user_profile": user_profile}
 
+
 # Endpoint to edit a user's profile (requires editing access)
 @router.put("/user/{username}/edit", status_code=status.HTTP_200_OK)
-async def edit_user_profile(
-    username: str,
-    db=Depends(get_db),
-    current_user=Depends(get_current_active_user)
-):
+async def edit_user_profile(username: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
     cursor, connection = db
     cursor.execute("SELECT * FROM Users WHERE username = %s", (username,))
     target_user = cursor.fetchone()
@@ -193,15 +183,8 @@ async def edit_user_profile(
 
     try:
         # Perform the profile update
-        cursor.execute(
-            "UPDATE Users SET is_admin = %s, is_supervisor = %s "
-            "WHERE username = %s",
-            (
-                user_access['is_admin'],
-                user_access['is_supervisor'],
-                username
-            )
-        )
+        cursor.execute("UPDATE Users SET is_admin = %s, is_supervisor = %s "
+                       "WHERE username = %s", (user_access['is_admin'], user_access['is_supervisor'], username))
         connection.commit()
 
         logger.info(f"User profile updated for {username}")
@@ -210,4 +193,5 @@ async def edit_user_profile(
     except mysql.connector.Error as e:
         connection.rollback()
         logger.error(f"Error updating profile for user {username}: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error updating profile: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Error updating profile: {str(e)}")

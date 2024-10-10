@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-import mysql.connector
-from mysql.connector import pooling
-from classes.supervisor import supervisor_
-from classes.supervisor import SupervisorWithTeam,TeamMember,Leave_Status
-from core.security import get_current_active_user
 import logging
 import os
-from dotenv  import load_dotenv
 from typing import List
-from classes import supervisor
 
+import mysql.connector
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, HTTPException, status
+from mysql.connector import pooling
+
+from classes import supervisor
+from classes.supervisor import SupervisorWithTeam, Leave_Status
+from classes.supervisor import supervisor_
+from core.security import get_current_active_user
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -20,12 +21,8 @@ router = APIRouter()
 
 # Database connection pool
 load_dotenv()
-dbconfig = {
-    "host": os.getenv('DB_HOST'),
-    "user": os.getenv('DB_USER'),
-    "password": os.getenv('DB_PASSWORD'),
-    "database": os.getenv('DB_NAME'),
-}
+dbconfig = {"host": os.getenv('DB_HOST'), "user": os.getenv('DB_USER'), "password": os.getenv('DB_PASSWORD'),
+    "database": os.getenv('DB_NAME'), }
 db_pool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, **dbconfig)
 
 
@@ -40,11 +37,9 @@ def get_db():
         connection.close()
 
 
-
-@router.get("/supervisors",response_model=List[supervisor.supervisor_])
-async def all_spervisors(db=Depends(get_db),current_user=Depends(get_current_active_user)):
-
-    cursor,connection = db
+@router.get("/supervisors", response_model=List[supervisor.supervisor_])
+async def all_spervisors(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    cursor, connection = db
     try:
 
         # Check admin status using a stored procedure
@@ -62,13 +57,9 @@ async def all_spervisors(db=Depends(get_db),current_user=Depends(get_current_act
         """)
         supervisors = cursor.fetchall()
 
-        all_supervisor_response  = [
-            supervisor_(
-                employee_id = row['employee_id'],
-                name  = row['name']
+        all_supervisor_response = [supervisor_(employee_id=row['employee_id'], name=row['name']
 
-            )for row in supervisors
-        ]
+        ) for row in supervisors]
 
         return all_supervisor_response
 
@@ -79,7 +70,6 @@ async def all_spervisors(db=Depends(get_db),current_user=Depends(get_current_act
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
-
 
 
 @router.get("/supervisors-with-teams", response_model=List[SupervisorWithTeam])
@@ -121,18 +111,8 @@ async def supervisors_with_teams(db=Depends(get_db), current_user=Depends(get_cu
             team_members = cursor.fetchall()
 
             # Construct the response
-            supervisor_with_team = {
-                "supervisor": {
-                    "employee_id": supervisor_id,
-                    "name": supervisor_name
-                },
-                "team": [
-                    {
-                        "employee_id": member['employee_id'],
-                        "name": member['name']
-                    } for member in team_members
-                ]
-            }
+            supervisor_with_team = {"supervisor": {"employee_id": supervisor_id, "name": supervisor_name},
+                "team": [{"employee_id": member['employee_id'], "name": member['name']} for member in team_members]}
 
             all_supervisors_with_teams.append(supervisor_with_team)
 
@@ -145,7 +125,6 @@ async def supervisors_with_teams(db=Depends(get_db), current_user=Depends(get_cu
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
-
 
 
 @router.put("/leavings/status")

@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from classes import employee
-import mysql.connector
-from mysql.connector import pooling
-from core.security import get_current_active_user
-from fastapi.security import OAuth2PasswordBearer
 import logging
 import os
-from dotenv  import load_dotenv
 
+import mysql.connector
+from dotenv import load_dotenv
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from mysql.connector import pooling
 
+from classes import employee
+from core.security import get_current_active_user
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -22,12 +22,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Database connection pool
 load_dotenv()
-dbconfig = {
-    "host": os.getenv('DB_HOST'),
-    "user": os.getenv('DB_USER'),
-    "password": os.getenv('DB_PASSWORD'),
-    "database": os.getenv('DB_NAME'),
-}
+dbconfig = {"host": os.getenv('DB_HOST'), "user": os.getenv('DB_USER'), "password": os.getenv('DB_PASSWORD'),
+    "database": os.getenv('DB_NAME'), }
 db_pool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, **dbconfig)
 
 
@@ -43,14 +39,10 @@ def get_db():
 
 
 @router.post("/employee/create", status_code=status.HTTP_201_CREATED)
-async def create_employee(
-        employee: employee.EmployeeCreate,
-        db=Depends(get_db),
-        current_user=Depends(get_current_active_user)
-):
+async def create_employee(employee: employee.EmployeeCreate, db=Depends(get_db),
+        current_user=Depends(get_current_active_user)):
     cursor, connection = db
     logger.info(f"Attempting to create employee: {employee.employee_id}")
-
 
     try:
         cursor.callproc("get_employee_id_by_username", [current_user.username])
@@ -72,12 +64,10 @@ async def create_employee(
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         cursor.execute(insert_query, (
-            employee.employee_id, employee.name, employee.birthday, employee.NIC,
-            employee.gender, employee.marital_status, employee.number_of_dependents,
-            employee.address, employee.contact_number, employee.emergency_contact_id,
-            employee.business_email, employee.position_id, employee.supervisor_id,
-            employee.department_id, employee.branch_id, employee.leaves_record_id
-        ))
+            employee.employee_id, employee.name, employee.birthday, employee.NIC, employee.gender,
+            employee.marital_status, employee.number_of_dependents, employee.address, employee.contact_number,
+            employee.emergency_contact_id, employee.business_email, employee.position_id, employee.supervisor_id,
+            employee.department_id, employee.branch_id, employee.leaves_record_id))
         connection.commit()
 
         # Fetch the newly created employee record using a stored procedure
@@ -99,13 +89,8 @@ async def create_employee(
 
 
 @router.get("/employee/{username}", response_model=employee.EmployeeResponse)
-async def read_employee(
-        username: str,
-        page: int = 1,
-        size: int = 10,
-        db=Depends(get_db),
-        current_user=Depends(get_current_active_user)
-):
+async def read_employee(username: str, page: int = 1, size: int = 10, db=Depends(get_db),
+        current_user=Depends(get_current_active_user)):
     cursor, _ = db
 
     try:
@@ -120,7 +105,7 @@ async def read_employee(
         employee_id = employee_id_result['employee_id']
 
         # Check admin status using a stored procedure
-        cursor.execute("SELECT is_admin from user_access where username = %s",(current_user.username,))
+        cursor.execute("SELECT is_admin from user_access where username = %s", (current_user.username,))
         is_admin = cursor.fetchone();
 
         # Check visibility access
@@ -149,11 +134,7 @@ async def read_employee(
 
 
 @router.delete("/employee/{employee_id}", status_code=status.HTTP_200_OK)
-async def delete_employee(
-        employee_id: str,
-        db=Depends(get_db),
-        current_user=Depends(get_current_active_user)
-):
+async def delete_employee(employee_id: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
     cursor, connection = db
 
     try:
@@ -188,13 +169,10 @@ async def delete_employee(
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
 
+
 @router.put("/employee/{employee_id}", response_model=employee.EmployeeResponse)
-async def update_employee(
-        employee_id: int,
-        employee_update: employee.EmployeeUpdate,
-        db=Depends(get_db),
-        current_user=Depends(get_current_active_user)
-):
+async def update_employee(employee_id: int, employee_update: employee.EmployeeUpdate, db=Depends(get_db),
+        current_user=Depends(get_current_active_user)):
     cursor, connection = db
 
     try:
@@ -225,8 +203,7 @@ async def update_employee(
             employee_update.marital_status, employee_update.number_of_dependents, employee_update.address,
             employee_update.contact_number, employee_update.emergency_contact_id, employee_update.business_email,
             employee_update.position_id, employee_update.supervisor_id, employee_update.department_id,
-            employee_update.branch_id, employee_update.leaves_record_id, employee_id
-        ))
+            employee_update.branch_id, employee_update.leaves_record_id, employee_id))
         connection.commit()
 
         # Fetch the updated employee details

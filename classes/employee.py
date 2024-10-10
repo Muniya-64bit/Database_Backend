@@ -1,6 +1,9 @@
-from pydantic import BaseModel
-from typing import Optional, List
 import datetime as d
+from typing import Optional
+
+from pydantic import BaseModel
+
+
 class EmployeeBase(BaseModel):
     employee_id: str
     name: str
@@ -22,11 +25,14 @@ class EmployeeBase(BaseModel):
     class Config:
         orm_mode = True
 
+
 class EmployeeCreate(EmployeeBase):
     pass
 
+
 class EmployeeUpdate(EmployeeBase):
     pass
+
 
 class EmployeeResponse(EmployeeBase):
     class Config:

@@ -1,13 +1,14 @@
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Annotated
-import mysql.connector
+
 import jwt
+import mysql.connector
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from pydantic import BaseModel
-import os
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -18,12 +19,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 # Database connection function
 def get_db():
-    connection = mysql.connector.connect(
-        host=os.getenv('DB_HOST'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_NAME')
-    )
+    connection = mysql.connector.connect(host=os.getenv('DB_HOST'), user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'), database=os.getenv('DB_NAME'))
     cursor = connection.cursor(dictionary=True)
     try:
         yield cursor, connection
@@ -107,11 +104,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 # Dependency to get the current user
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db=Depends(get_db)):
     cursor, connection = db
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"}, )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -136,23 +130,15 @@ async def get_current_active_user(current_user: Annotated[User, Depends(get_curr
 
 # Endpoint to log in and get the access token
 @app.post("/token", response_model=Token)
-async def login_for_access_token(
-        form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-        db=Depends(get_db)
-):
+async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db=Depends(get_db)):
     cursor, connection = db
     user = authenticate_user(cursor, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}, )
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
 

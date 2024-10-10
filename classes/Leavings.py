@@ -1,6 +1,9 @@
-from pydantic import BaseModel
-from typing import Optional, List
 from datetime import date
+from typing import Optional
+
+from pydantic import BaseModel
+
+
 class LeaveRequestBase(BaseModel):
     Leave_Request_ID: int
     Employee_ID: str
@@ -12,8 +15,10 @@ class LeaveRequestBase(BaseModel):
     Type_of_Leave: str
     Request_Status: str
 
+
 class LeaveRequestCreate(LeaveRequestBase):
     pass
+
 
 class LeaveRequestUpdate(BaseModel):
     Period_of_Absence: Optional[int]
