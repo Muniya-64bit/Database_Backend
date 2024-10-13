@@ -125,7 +125,7 @@ async def update_user_access(
 
         logger.info(f"Access updated for user {username}")
         return {"message": "User access updated successfully"}
-
+###
     except mysql.connector.Error as e:
         connection.rollback()
         logger.error(f"Database error updating access for user {username}: {str(e)}")
