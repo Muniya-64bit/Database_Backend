@@ -33,35 +33,36 @@ def get_db():
 # Pydantic model for access update
 
 
-# Endpoint to register a new user
-@router.post("/user/reg", status_code=status.HTTP_201_CREATED)
-async def create_user(user: User, db=Depends(get_db)):
-    cursor, connection = db
-    try:
-        # Hash the password
-        hashed_password = pwd_context.hash(user.password)
-        # Insert the user data with optional nullable fields
-        cursor.execute(
-            "INSERT INTO users (username, password, Employee_ID,last_login_date,last_login_time) VALUES (%s, %s, %s,%s,%s)",
-            (user.username, hashed_password, user.employee_id, user.last_login_date, user.last_login_time))
-        connection.commit()
-
-        # Fetch the newly created user to confirm
-        cursor.execute("SELECT * FROM users WHERE username = %s", (user.username,))
-        new_user = cursor.fetchone()
-        if not new_user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found after insertion")
-
-        logger.info(f"User {user.username} registered successfully.")
-        return {"message": "User registered successfully", "user": new_user}
-
-    except mysql.connector.Error as e:
-        connection.rollback()  # Rollback transaction on error
-        logger.error(f"Database error during user registration: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
-    except Exception as e:
-        logger.error(f"Unexpected error during user registration: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
+# # Endpoint to register a new user
+# @router.post("/user/reg", status_code=status.HTTP_201_CREATED)
+# async def create_user(user: User, db=Depends(get_db)):
+#     cursor, connection = db
+#     try:
+#         # Hash the password
+#         hashed_password = pwd_context.hash(user.password)
+#
+#         # Call stored procedure to create user account based on access level
+#         cursor.callproc("create_user_account", [user.username, hashed_password, user.employee_id, user.access_level])
+#         connection.commit()
+#
+#         # Fetch the newly created user record to confirm
+#         cursor.execute("SELECT * FROM users WHERE username = %s", (user.username,))
+#         new_user = cursor.fetchone()
+#
+#         if not new_user:
+#             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found after insertion")
+#
+#         logger.info(f"User {user.username} registered successfully.")
+#         return {"message": "User registered successfully", "user": new_user}
+#
+#     except mysql.connector.Error as e:
+#         connection.rollback()  # Rollback transaction on error
+#         logger.error(f"Database error during user registration: {str(e)}")
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+#
+#     except Exception as e:
+#         logger.error(f"Unexpected error during user registration: {str(e)}")
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
 
 
 # Endpoint to log in a user and generate an access token
@@ -81,17 +82,11 @@ async def login_user(user: UserLogin, db=Depends(get_db)):
     # Create access token
     access_token = create_access_token(data={"sub": db_user['username']})
 
-    # Get current date and time for login
-    login_date = datetime.now().date()  # Current date
-    login_time = datetime.now().time()  # Current time
+
 
     # Update last login date and time in a single query
-    cursor.execute("""
-        UPDATE users
-        SET last_login_date = %s, last_login_time = %s
-        WHERE username = %s
-    """, (login_date, login_time, user.username))
-    connection.commit()
+
+
 
     logger.info(f"User {user.username} logged in successfully.")
 
@@ -145,53 +140,53 @@ async def login_user(user: UserLogin, db=Depends(get_db)):
 #         logger.error(f"Database error updating access for user {username}: {str(e)}")
 #         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
 
-# Endpoint to view a user's profile based on access control
-@router.get("/user/{username}/profile", status_code=status.HTTP_200_OK)
-async def view_user_profile(username: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
-    cursor, _ = db
-    cursor.execute("SELECT * FROM Users WHERE User_ID = %s", (username,))
-    user_profile = cursor.fetchone()
-
-    if not user_profile:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    cursor.excute("SELECT *is_admin FROM user_access where username = %s", (username,))
-    is_admin = cursor.fetchone()
-
-    if not is_admin:
-        raise HTTPException(status_code=404, detail="User is not a admin.")
-
-    logger.info(f"User {current_user['username']} viewed profile of {username}")
-    return {"user_profile": user_profile}
-
-
-# Endpoint to edit a user's profile (requires editing access)
-@router.put("/user/{username}/edit", status_code=status.HTTP_200_OK)
-async def edit_user_profile(username: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
-    cursor, connection = db
-    cursor.execute("SELECT * FROM Users WHERE username = %s", (username,))
-    target_user = cursor.fetchone()
-
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    cursor.excute("SELECT * FROM user_access where username = %s", (username,))
-    user_access = cursor.fetchone()
-
-    if not user_access['is_admin']:
-        raise HTTPException(status_code=404, detail="User is not a admin.")
-
-    try:
-        # Perform the profile update
-        cursor.execute("UPDATE Users SET is_admin = %s, is_supervisor = %s "
-                       "WHERE username = %s", (user_access['is_admin'], user_access['is_supervisor'], username))
-        connection.commit()
-
-        logger.info(f"User profile updated for {username}")
-        return {"message": "Profile updated successfully"}
-
-    except mysql.connector.Error as e:
-        connection.rollback()
-        logger.error(f"Error updating profile for user {username}: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Error updating profile: {str(e)}")
+# # Endpoint to view a user's profile based on access control
+# @router.get("/user/{username}/profile", status_code=status.HTTP_200_OK)
+# async def view_user_profile(username: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
+#     cursor, _ = db
+#     cursor.execute("SELECT * FROM Users WHERE User_ID = %s", (username,))
+#     user_profile = cursor.fetchone()
+#
+#     if not user_profile:
+#         raise HTTPException(status_code=404, detail="User not found")
+#
+#     cursor.excute("SELECT *is_admin FROM user_access where username = %s", (username,))
+#     is_admin = cursor.fetchone()
+#
+#     if not is_admin:
+#         raise HTTPException(status_code=404, detail="User is not a admin.")
+#
+#     logger.info(f"User {current_user['username']} viewed profile of {username}")
+#     return {"user_profile": user_profile}
+#
+#
+# # Endpoint to edit a user's profile (requires editing access)
+# @router.put("/user/{username}/edit", status_code=status.HTTP_200_OK)
+# async def edit_user_profile(username: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
+#     cursor, connection = db
+#     cursor.execute("SELECT * FROM Users WHERE username = %s", (username,))
+#     target_user = cursor.fetchone()
+#
+#     if not target_user:
+#         raise HTTPException(status_code=404, detail="User not found")
+#
+#     cursor.excute("SELECT * FROM user_access where username = %s", (username,))
+#     user_access = cursor.fetchone()
+#
+#     if not user_access['is_admin']:
+#         raise HTTPException(status_code=404, detail="User is not a admin.")
+#
+#     try:
+#         # Perform the profile update
+#         cursor.execute("UPDATE Users SET is_admin = %s, is_supervisor = %s "
+#                        "WHERE username = %s", (user_access['is_admin'], user_access['is_supervisor'], username))
+#         connection.commit()
+#
+#         logger.info(f"User profile updated for {username}")
+#         return {"message": "Profile updated successfully"}
+#
+#     except mysql.connector.Error as e:
+#         connection.rollback()
+#         logger.error(f"Error updating profile for user {username}: {str(e)}")
+#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                             detail=f"Error updating profile: {str(e)}")

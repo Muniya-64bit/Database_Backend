@@ -9,9 +9,7 @@ class User(BaseModel):
     username: str
     password: str
     employee_id: str
-    last_login_date: Optional[date] = None
-    last_login_time: Optional[time] = None
-
+    access_level :str
     class Config:
         orm_mode = True
 
@@ -19,7 +17,6 @@ class User(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
-    employee_id: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -28,6 +25,17 @@ class UserLogin(BaseModel):
 class LoginResponse(BaseModel):
     username: str
     token: str
+
+    class Config:
+        orm_mode = True
+
+
+class UserResponse(BaseModel):
+    username: str
+    employee_id: str
+    access_level: str
+
+
 
     class Config:
         orm_mode = True
