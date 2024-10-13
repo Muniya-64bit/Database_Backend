@@ -39,3 +39,7 @@ class UserResponse(BaseModel):
 
     class Config:
         orm_mode = True
+class UpdatePassword(BaseModel):
+    password: str
+    class Config:
+        orm_mode = True

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status,Body
 from pydantic import BaseModel
 
-from classes.User import User, UserLogin, LoginResponse
+from classes.User import User, UserLogin, LoginResponse,UpdatePassword
 from core.security import pwd_context, verify_password, create_access_token, get_current_active_user
 
 # Initialize logging
@@ -87,10 +87,6 @@ async def login_user(user: UserLogin, db=Depends(get_db)):
     # Return response with username and token
     return LoginResponse(username=db_user['username'], token=access_token)
 
-class UpdatePassword(BaseModel):
-    password: str
-    class Config:
-        orm_mode = True
 
 @router.put("/user/{username}", status_code=status.HTTP_200_OK)
 async def update_user_access(
