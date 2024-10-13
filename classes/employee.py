@@ -33,8 +33,7 @@ class EmployeeCreate(EmployeeBase):
     pass
 
 
-class EmployeeUpdate(EmployeeBase):
-    pass
+
 
 
 class EmployeeResponse(BaseModel):
@@ -53,6 +52,25 @@ class EmployeeResponse(BaseModel):
     department_id: int
     branch_id: int
     profile_photo: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+class EmployeeUpdate(BaseModel):
+    employee_id:Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    birthday: Optional[d.datetime] = None
+    employee_nic: Optional[str] = None
+    gender: Optional[str] = None
+    marital_status: Optional[str] = None
+    number_of_dependents: Optional[int] = None
+    address: Optional[str] = None
+    contact_number: Optional[str] = None
+    business_email: Optional[str] = None
+    job_title: Optional[str] = None
+    department_id: Optional[int] = None
+    branch_id: Optional[int] = None
 
     class Config:
         orm_mode = True
