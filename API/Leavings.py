@@ -45,7 +45,7 @@ def create_leave_request(leave_request: Leavings.LeaveRequestCreate, db=Depends(
             leave_request.Reason_for_Absence, leave_request.Type_of_Leave, leave_request.Request_Status))
         connection.commit()
         leave_request_id = leave_request.Leave_Request_ID
-        cursor.execute("SELECT * FROM Leave_Request WHERE Leave_Request_ID = %s", (leave_request_id,))
+        cursor.execute("SELECT * FROM leave_request WHERE leave_request_id = %s", (leave_request_id,))
         new_leave_request = cursor.fetchone()
         return new_leave_request
 
