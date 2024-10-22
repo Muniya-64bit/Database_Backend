@@ -1,6 +1,6 @@
 import logging
 import os
-
+import asyncmy
 import mysql.connector
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -23,14 +23,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Database connection pool
 load_dotenv()
-dbconfig = {"host": os.getenv('DB_HOST'), "user": os.getenv('DB_USER'), "password": os.getenv('DB_PASSWORD'),
-    "database": os.getenv('DB_NAME'), }
-db_pool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, **dbconfig)
 
-
-# Database connection dependency
-def get_db():
-    connection = db_pool.get_connection()
+async def get_db():
+    connection = mysql.connector.connect(host=os.getenv('DB_HOST'), user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'), database=os.getenv('DB_NAME'))
     cursor = connection.cursor(dictionary=True)
     try:
         yield cursor, connection
@@ -88,34 +84,45 @@ async def create_employee(employee: employee.EmployeeCreate, db=Depends(get_db),
 
 @router.get("/employee/{username}", response_model=employee.EmployeeResponse)
 async def read_employee(username: str, db=Depends(get_db),
-        current_user=Depends(get_current_active_user)):
+                        current_user=Depends(get_current_active_user)):
     cursor, _ = db
 
     try:
-        # Fetch the employee_id of the current user
+        # Fetch the employee_id of the current user (currently logged-in user)
         cursor.callproc("get_employee_id_by_username", [current_user.username])
         user_record = next(cursor.stored_results()).fetchone()
 
         if not user_record:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="Current user not found")
 
         employee_id = user_record["employee_id"]
 
-        # Check visibility access
-        is_admin = next(cursor.stored_results()).fetchone()
-        # Check visibility access
-        if current_user.employee_id != employee_id and not is_admin['is_admin']:
-            raise HTTPException(status_code=403, detail="Not authorized to delete this employee")
-        logger.info(f"Fetching employee details for {username}")
+        # Check if current user is admin using a separate stored procedure
+        cursor.callproc("is_admin", [current_user.username])
+        admin_record = next(cursor.stored_results()).fetchone()
+        is_admin = admin_record["is_admin"] if admin_record else False
 
-        # Fetch employee details via stored procedure with pagination
-        cursor.callproc("get_employee_details", (employee_id,))
+        # Fetch the target employee's employee_id by their username
+        cursor.callproc("get_employee_id_by_username", [username])
+        target_employee_record = next(cursor.stored_results()).fetchone()
 
+        if not target_employee_record:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
+        target_employee_id = target_employee_record["employee_id"]
+
+        # If the current user is not an admin and tries to access another user's data, deny access
+        if not is_admin and current_user.employee_id != target_employee_id:
+            raise HTTPException(status_code=403, detail="Not authorized to view this employee's details")
+
+        # Fetch employee details via stored procedure
+        cursor.callproc("get_employee_details", [target_employee_id])
         employee_record = next(cursor.stored_results()).fetchone()
 
         if not employee_record:
-            raise HTTPException(status_code=404, detail="Employee not found")
+            raise HTTPException(status_code=404, detail="Employee details not found")
 
+        logger.info(f"Fetched employee details for {username}")
         return employee_record
 
     except mysql.connector.Error as e:
@@ -125,6 +132,7 @@ async def read_employee(username: str, db=Depends(get_db),
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
+
 #
 #
 @router.delete("/employee/{username}", status_code=status.HTTP_200_OK)
@@ -172,19 +180,9 @@ async def delete_employee(username: str, db=Depends(get_db), current_user=Depend
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
 
 
-#
-from fastapi import APIRouter, Depends, HTTPException
-from typing import Optional
-import mysql.connector
-from pydantic import BaseModel
-import logging
-import datetime as d
 
-# Assuming your existing models are imported
-# from your_module import employee  # Adjust import as necessary
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
 
 
 @router.put("/employee/{username}", response_model=employee.EmployeeResponse)

@@ -21,6 +21,10 @@ class EmployeeBase(BaseModel):
     department_name: str
     branch_name: str
     profile_photo: Optional[str] = None
+    emergency_contact_name:str
+    emergency_contact_nic: str
+    emergency_contact_address: str
+    emergency_contact_number: str
 
     # Emergency contact details
 
