@@ -21,7 +21,7 @@ router = APIRouter()
 # Dependency for OAuth2 token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Database connection pool
+# Database connection
 load_dotenv()
 
 async def get_db():

@@ -5,7 +5,7 @@ from datetime import datetime
 import mysql.connector
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status,Body
-from pydantic import BaseModel
+from pantic import BaseModel
 
 from classes.User import User, UserLogin, LoginResponse,UpdatePassword
 from core.security import pwd_context, verify_password, create_access_token, get_current_active_user

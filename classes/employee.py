@@ -25,7 +25,6 @@ class EmployeeBase(BaseModel):
     emergency_contact_nic: str
     emergency_contact_address: str
     emergency_contact_number: str
-
     # Emergency contact details
 
 
