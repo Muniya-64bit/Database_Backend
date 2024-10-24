@@ -1,16 +1,19 @@
 import logging
 import os
-from datetime import datetime
 
-import asyncmy
 import mysql.connector
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from mysql.connector import pooling
+import uuid
+
+# Generate a random UUID (UUID4)
+
+
+
 
 from classes import employee
-from classes.employee import EmployeeResponse
 from core.security import get_current_active_user
 
 # Initialize logging
@@ -52,6 +55,7 @@ async def create_employee(employee: employee.EmployeeCreate, db=Depends(get_db),
             raise HTTPException(status_code=404, detail="User not found")
 
         employee_id = user_record["employee_id"]
+        employee.employee_id= str(uuid.uuid4())
         # Check authorization using a user-defined function
         if current_user.employee_id != employee_id and not cursor.callproc("is_admin", [current_user.username]):
             raise HTTPException(status_code=403, detail="Not authorized to add an employee")
@@ -291,6 +295,117 @@ async def get_employee_of_the_month(db=Depends(get_db),
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
+
+
+
+@router.get("/on_leave")
+async def get_on_leave(db=Depends(get_db),
+        current_user=Depends(get_current_active_user)):
+    cursor, connection = db
+    try:
+        # Fetch the employee_id of the current user
+        cursor.callproc("get_employee_id_by_username", [current_user.username])
+        user_record = next(cursor.stored_results()).fetchone()
+
+        # Fetch the employee_id of the employee to be deleted
+        cursor.callproc("get_leave_count")
+        on_leave = next(cursor.stored_results()).fetchone()
+
+        if not user_record:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if not on_leave:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
+        connection.commit()
+
+        logger.info(f"Employee of the month-->")
+
+        return {"message": f"Employee of the month is {on_leave}"}
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error while deleting employee: {str(e)}")
+        connection.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
+
+
+
+
+@router.get("/today_full_time")
+async def get_on_fulltime(db=Depends(get_db),
+        current_user=Depends(get_current_active_user)):
+    cursor, connection = db
+    try:
+        # Fetch the employee_id of the current user
+        cursor.callproc("get_employee_id_by_username", [current_user.username])
+        user_record = next(cursor.stored_results()).fetchone()
+
+        # Fetch the employee_id of the employee to be deleted
+        cursor.callproc("get_fulltime_employee_count_presentage")
+        full_time = next(cursor.stored_results()).fetchone()
+
+        if not user_record:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if not full_time:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
+        connection.commit()
+
+        logger.info(f"Employee of the month-->")
+
+        return {"message": f"Employee of the month is {full_time}"}
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error while deleting employee: {str(e)}")
+        connection.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
+
+
+
+@router.get("/today_half_time")
+async def get_on_halftome(db=Depends(get_db),
+        current_user=Depends(get_current_active_user)):
+    cursor, connection = db
+    try:
+        # Fetch the employee_id of the current user
+        cursor.callproc("get_employee_id_by_username", [current_user.username])
+        user_record = next(cursor.stored_results()).fetchone()
+
+        # Fetch the employee_id of the employee to be deleted
+        cursor.callproc("get_parttime_employee_count_presentage")
+        part_time = next(cursor.stored_results()).fetchone()
+
+        if not user_record:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if not full_time:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
+        connection.commit()
+
+        logger.info(f"Employee of the month-->")
+
+        return {"message": f"Employee of the month is {part_time}"}
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error while deleting employee: {str(e)}")
+        connection.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
+
+
 
 
 

@@ -158,12 +158,11 @@ async def leave_status(status: Leave_Status, db=Depends(get_db), current_user=De
         if not status.leave_request_id or not status.status_:
             raise HTTPException(status_code=400, detail="Missing leave_request_id or status.")
 
-        # Update leave request status
-        cursor.execute("""
-                        UPDATE leave_request
-                        SET request_status = %s
-                        WHERE leave_request_id = %s
-        """, (status.status_, status.leave_request_id))
+        cursor.callproc('evaluate_leave_request', [status.leave_request_id,status.status_],)
+        # supervisor_result = next(cursor.stored_results()).fetchone()
+        #
+        # if not supervisor_result:
+        #     raise HTTPException(status_code=404, detail="Supervisor ID not found.")
 
         connection.commit()
 

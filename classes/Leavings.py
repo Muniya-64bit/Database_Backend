@@ -23,6 +23,9 @@ class LeaveRequestUpdate(BaseModel):
 
 
 class LeaveRequestResponse(BaseModel):
+    first_name:str
+    last_name:str
+    gender:str
     leave_request_id: int
     employee_id: str
     request_date: date
