@@ -68,31 +68,64 @@ async def create_user(user: User, db=Depends(get_db)):
 
 # Endpoint to log in a user and generate an access token
 @router.post("/login", response_model=LoginResponse)
-async def login_user(user: UserLogin, db=Depends(get_db)):
+async def login_user(user: UserLogin, db=Depends(get_db), ):
     cursor, connection = db
 
-    # Fetch the user record by username
-    cursor.execute("SELECT * FROM users WHERE username = %s", (user.username,))
-    db_user = cursor.fetchone()
-    cursor.callproc('role_checker',[user.username,])
-    result_cursor = next(cursor.stored_results(), None)
+    try:
+        # Fetch the user record by username
+        cursor.execute("SELECT * FROM users WHERE username = %s", (user.username,))
+        db_user = cursor.fetchone()
 
-    if result_cursor is None:
-        logger.error("No result set returned from stored procedure 'show_supervisor'")
-        raise HTTPException(status_code=500, detail="No results returned from the stored procedure")
+        if not db_user:
+            logger.warning(f"Login failed for username {user.username}: User not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid credentials")
 
-    role = result_cursor.fetchone()
-    # Check if the user exists and verify the password
-    if not db_user or not verify_password(user.password, db_user['password']):
-        logger.warning(f"Login failed for username {user.username}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid credentials")
-    # Create access token
-    access_token = create_access_token(data={"sub": db_user['username']})
-    logger.info(f"User {user.username} logged in successfully.")
-    cursor.callproc("login_update",[user.username])
-    connection.commit()
-    # Return response with username and token
-    return LoginResponse(username=db_user['username'], token=access_token,role = role)
+        # Check if the password is valid
+        if not verify_password(user.password, db_user['password']):
+            logger.warning(f"Login failed for username {user.username}: Invalid password")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid credentials")
+        role = None
+        # Call the stored procedure 'role_checker' to get the user role
+        logger.info(f"Calling 'role_checker' procedure for user {user.username}")
+        cursor.callproc('role_checker', [user.username])
+
+        # Fetch the result from the procedure
+        result_cursor = next(cursor.stored_results(), None)
+
+        if result_cursor is None:
+            logger.error(f"No result set returned from stored procedure 'role_checker'")
+            raise HTTPException(status_code=500, detail="Error determining user role")
+
+        role_row = result_cursor.fetchone()
+        if role_row is None :
+            logger.error(f"No role returned for username {user.username}")
+            raise HTTPException(status_code=500, detail="Error determining user role")
+
+        role = role_row['user_role']  # The role should be in the first column of the row
+
+        # Log the role for debugging
+        logger.info(f"User {user.username} has role: {role}")
+
+        # Update the last login time using a procedure (if applicable)
+        logger.info(f"Updating last login for user {user.username}")
+        cursor.callproc("login_update", [user.username])
+        connection.commit()
+
+        # Generate an access token
+        access_token = create_access_token(data={"sub": db_user['username']})
+        logger.info(f"User {user.username} logged in successfully")
+
+        # Return the login response with username, token, and role
+        return LoginResponse(username=db_user['username'], token=access_token, role=role)
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error during login: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error during login: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
+
 
 
 @router.put("/user/{username}", status_code=status.HTTP_200_OK)
