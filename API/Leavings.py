@@ -126,8 +126,8 @@ def get_team_leave_requests(db=Depends(get_db), current_user=Depends(get_current
 
     # Fetch all leave requests for employees who report to the supervisor
     cursor.execute("""
-        SELECT * FROM Leave_Request
-        WHERE  Supervisor_ID = %s
+        select * from leave_request
+where employee_id in (select employee_id from supervisor where supervisor.supervisor_id = %s);
         
     """, (current_user.employee_id,))  # Assuming `current_user.employee_id` is the supervisor's ID
 
@@ -143,5 +143,42 @@ def get_team_leave_requests(db=Depends(get_db), current_user=Depends(get_current
             leave_start_date=row['leave_start_date'], period_of_absence=row['period_of_absence'],
             reason_for_absence=row['reason_for_absence'], type_of_leave=row['type_of_leave'],
             request_status=row['request_status']) for row in leave_requests]
+
+    return leave_requests_response
+
+
+@router.get("/supervisor/leave_requests", response_model=List[Leavings.LeaveRequestResponse])
+def get_team_leave_requests_pending(db=Depends(get_db), current_user=Depends(get_current_active_user)
+                            # Enforces JWT token authentication
+                            ):
+    cursor, _ = db
+
+    # Verify that the current user is a supervisor
+    cursor.execute("SELECT is_supervisor FROM user_access WHERE username = %s", (current_user.username,))
+    user_role = cursor.fetchone()
+    if user_role is None and user_role != current_user.username:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="You do not have permission to view this information")
+
+    # Fetch all leave requests for employees who report to the supervisor
+    cursor.execute("""
+        select * from leave_request
+where employee_id in (select employee_id from supervisor where supervisor.supervisor_id = %s) and leave_request.status ='pending;
+
+    """, (current_user.employee_id,))  # Assuming `current_user.employee_id` is the supervisor's ID
+
+    leave_requests = cursor.fetchall()
+
+    if not leave_requests:
+        raise HTTPException(status_code=404, detail="No leave requests found for your team")
+
+    # Map SQL query results to the LeaveRequestResponse model
+    leave_requests_response = [
+        Leavings.LeaveRequestResponse(leave_request_id=row['leave_request_id'], employee_id=row['employee_id'],
+                                      supervisor_id=row['supervisor_id'], request_date=row['request_date'],
+                                      leave_start_date=row['leave_start_date'],
+                                      period_of_absence=row['period_of_absence'],
+                                      reason_for_absence=row['reason_for_absence'], type_of_leave=row['type_of_leave'],
+                                      request_status=row['request_status']) for row in leave_requests]
 
     return leave_requests_response

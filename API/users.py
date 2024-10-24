@@ -74,7 +74,14 @@ async def login_user(user: UserLogin, db=Depends(get_db)):
     # Fetch the user record by username
     cursor.execute("SELECT * FROM users WHERE username = %s", (user.username,))
     db_user = cursor.fetchone()
+    cursor.callproc('role_checker',[user.username,])
+    result_cursor = next(cursor.stored_results(), None)
 
+    if result_cursor is None:
+        logger.error("No result set returned from stored procedure 'show_supervisor'")
+        raise HTTPException(status_code=500, detail="No results returned from the stored procedure")
+
+    role = result_cursor.fetchone()
     # Check if the user exists and verify the password
     if not db_user or not verify_password(user.password, db_user['password']):
         logger.warning(f"Login failed for username {user.username}")
@@ -85,7 +92,7 @@ async def login_user(user: UserLogin, db=Depends(get_db)):
     cursor.callproc("login_update",[user.username])
     connection.commit()
     # Return response with username and token
-    return LoginResponse(username=db_user['username'], token=access_token)
+    return LoginResponse(username=db_user['username'], token=access_token,role = role)
 
 
 @router.put("/user/{username}", status_code=status.HTTP_200_OK)

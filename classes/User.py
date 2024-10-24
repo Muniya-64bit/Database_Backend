@@ -25,6 +25,7 @@ class UserLogin(BaseModel):
 class LoginResponse(BaseModel):
     username: str
     token: str
+    role:str
 
     class Config:
         orm_mode = True

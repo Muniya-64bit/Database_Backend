@@ -11,7 +11,7 @@ from classes import supervisor
 from classes.supervisor import SupervisorWithTeam, Leave_Status, TeamMember
 from classes.supervisor import supervisor_
 from core.security import get_current_active_user
-
+from classes.Leavings import LeaveRequestResponse
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -177,8 +177,8 @@ async def leave_status(status: Leave_Status, db=Depends(get_db), current_user=De
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
 
-@router.get("/supervisor/team/{supervisor_id}",response_model=List[TeamMember])
-async def supervisor_team(supervisor_id:str,db=Depends(get_db), current_user=Depends(get_current_active_user)):
+@router.get("/supervisor/team/",response_model=List[TeamMember])
+async def supervisor_team(db=Depends(get_db), current_user=Depends(get_current_active_user)):
     cursor, connection = db
     try:
         # Check admin status
@@ -191,7 +191,17 @@ async def supervisor_team(supervisor_id:str,db=Depends(get_db), current_user=Dep
         # Ensure the user has admin rights
         if not is_supervisor:
             raise HTTPException(status_code=403, detail="Not authorized to view this information")
+        logger.info("Calling stored procedure 'get_employee_id_by_username'")
+        cursor.callproc('get_employee_id_by_username', [current_user.username, ])
 
+        # Fetch the results from the procedure
+        stored_result = next(cursor.stored_results(), None)
+
+        if not stored_result:
+            logger.error("No result set returned from the stored procedure 'get_employee_id_by_username'")
+            raise HTTPException(status_code=500, detail="No results returned from the stored procedure")
+
+        supervisor_id = stored_result.fetchone()['employee_id']  # Extract supervisor_id from the result
         # Call the stored procedure `show_supervisor`
         logger.info("Calling stored procedure 'show_all_employee_team'")
         cursor.callproc('employee_team',[supervisor_id,])
@@ -227,4 +237,67 @@ async def supervisor_team(supervisor_id:str,db=Depends(get_db), current_user=Dep
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
 
+
+@router.get("/team_leaves", response_model=List[LeaveRequestResponse])
+async def all_leaves(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    cursor, connection = db
+    try:
+        # Check if the current user is a supervisor
+        cursor.execute("SELECT is_supervisor FROM user_access WHERE username = %s", (current_user.username,))
+        is_supervisor = cursor.fetchone()
+
+        # Log admin status to verify the fetch
+        logger.info(f"Supervisor status for user {current_user.username}: {is_supervisor}")
+
+        # Ensure the user has supervisor rights
+        if not is_supervisor :
+            raise HTTPException(status_code=403, detail="Not authorized to view this information")
+
+        # Call the stored procedure to get the supervisor's employee ID
+        logger.info("Calling stored procedure 'get_employee_id_by_username'")
+        cursor.callproc('get_employee_id_by_username', [current_user.username,])
+
+        # Fetch the results from the procedure
+        stored_result = next(cursor.stored_results(), None)
+
+        if not stored_result:
+            logger.error("No result set returned from the stored procedure 'get_employee_id_by_username'")
+            raise HTTPException(status_code=500, detail="No results returned from the stored procedure")
+
+        supervisor_id = stored_result.fetchone()['employee_id']  # Extract supervisor_id from the result
+
+        # Log fetched supervisor ID for debugging
+        logger.info(f"Supervisor ID fetched: {supervisor_id}")
+
+        # Query to get leave requests for employees under the supervisor
+        cursor.execute("""
+            SELECT * FROM leave_request
+            WHERE employee_id IN (SELECT employee_id FROM supervisor WHERE supervisor.supervisor_id = %s);
+        """, (supervisor_id,))
+
+        team_leaves = cursor.fetchall()
+
+        # Build the response
+        all_leaves_requests = [
+            LeaveRequestResponse(
+                leave_request_id=row['leave_request_id'],
+                employee_id=row['employee_id'],
+                request_date=row['request_date'],
+                leave_start_date=row['leave_start_date'],
+                period_of_absence=row['period_of_absence'],
+                reason_for_absence=row['reason_for_absence'],
+                type_of_leave=row['type_of_leave'],
+                request_status=row['request_status']
+            ) for row in team_leaves
+        ]
+
+        return all_leaves_requests
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error while fetching leaves: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
 
