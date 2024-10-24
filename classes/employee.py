@@ -52,8 +52,8 @@ class EmployeeResponse(BaseModel):
     contact_number: str
     business_email: str
     job_title: str
-    department_id: int
-    branch_id: int
+    department_name: str
+    branch_name: str
     profile_photo: Optional[str] = None
 
     class Config:

@@ -1,5 +1,7 @@
 import logging
 import os
+from datetime import datetime
+
 import asyncmy
 import mysql.connector
 from dotenv import load_dotenv
@@ -65,7 +67,7 @@ async def create_employee(employee: employee.EmployeeCreate, db=Depends(get_db),
         connection.commit()
 
         # Fetch the newly created employee record using a stored procedure
-        cursor.callproc("get_employee", [employee.employee_id])
+        cursor.callproc("select_employee_details", [employee.employee_id])
         new_employee = next(cursor.stored_results()).fetchone()
         if not new_employee:
             raise HTTPException(status_code=404, detail="Employee creation failed")
@@ -116,7 +118,7 @@ async def read_employee(username: str, db=Depends(get_db),
             raise HTTPException(status_code=403, detail="Not authorized to view this employee's details")
 
         # Fetch employee details via stored procedure
-        cursor.callproc("get_employee_details", [target_employee_id])
+        cursor.callproc("select_employee_details", [target_employee_id])
         employee_record = next(cursor.stored_results()).fetchone()
 
         if not employee_record:
@@ -159,7 +161,7 @@ async def delete_employee(username: str, db=Depends(get_db), current_user=Depend
         cursor.callproc("is_admin",[current_user.username])
         is_admin = next(cursor.stored_results()).fetchone()
         # Check visibility access
-        if current_user_employee_id != employee_id_to_delete and not is_admin['is_admin']:
+        if current_user_employee_id == employee_id_to_delete or not is_admin['is_admin']:
             raise HTTPException(status_code=403, detail="Not authorized to delete this employee")
 
         # Delete the employee
@@ -252,4 +254,45 @@ async def update_employee(
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
+
+
+
+@router.get("/employee_of_month")
+async def get_employee_of_the_month(db=Depends(get_db),
+        current_user=Depends(get_current_active_user)):
+    cursor, connection  = db
+    try:
+        # Fetch the employee_id of the current user
+        cursor.callproc("get_employee_id_by_username", [current_user.username])
+        user_record = next(cursor.stored_results()).fetchone()
+
+        # Fetch the employee_id of the employee to be deleted
+        cursor.callproc("employee_of_the_month")
+        employee_of_month = next(cursor.stored_results()).fetchone()
+
+        if not user_record:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if not employee_of_month:
+            raise HTTPException(status_code=404, detail="Employee not found")
+
+
+        connection.commit()
+
+        logger.info(f"Employee of the month-->")
+
+        return {"message": f"Employee of the month is {user_record}"}
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error while deleting employee: {str(e)}")
+        connection.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
+
+
+
+
 

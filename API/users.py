@@ -79,11 +79,11 @@ async def login_user(user: UserLogin, db=Depends(get_db)):
     if not db_user or not verify_password(user.password, db_user['password']):
         logger.warning(f"Login failed for username {user.username}")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid credentials")
-
     # Create access token
     access_token = create_access_token(data={"sub": db_user['username']})
     logger.info(f"User {user.username} logged in successfully.")
-
+    cursor.callproc("login_update",[user.username])
+    connection.commit()
     # Return response with username and token
     return LoginResponse(username=db_user['username'], token=access_token)
 

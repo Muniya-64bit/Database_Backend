@@ -3,10 +3,9 @@ import os
 import mysql.connector
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-
+from typing import List
 from classes import Leavings
 from core.security import get_current_active_user  # Assuming this function is implemented in core.security
-
 router = APIRouter()
 from dotenv import load_dotenv
 
@@ -31,23 +30,16 @@ def get_db():
 
 
 # Endpoint to create a new leave request (accessible by employees)
-@router.post("/leave/request", status_code=status.HTTP_201_CREATED, response_model=Leavings.LeaveRequestResponse)
+@router.post("/leave/request", status_code=status.HTTP_201_CREATED)
 def create_leave_request(leave_request: Leavings.LeaveRequestCreate, db=Depends(get_db),
         current_user=Depends(get_current_active_user)  # Enforces JWT token authentication
 ):
     cursor, connection = db
     try:
-        cursor.execute(
-            "INSERT INTO Leave_Request (Leave_Request_ID, Employee_ID, Supervisor_ID, Request_Date, Leave_Start_Date, Period_of_Absence, Reason_for_Absence, Type_of_Leave, Request_Status) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", (
-            leave_request.Leave_Request_ID, leave_request.Employee_ID, leave_request.Supervisor_ID,
-            leave_request.Request_Date, leave_request.Leave_Start_Date, leave_request.Period_of_Absence,
-            leave_request.Reason_for_Absence, leave_request.Type_of_Leave, leave_request.Request_Status))
+        cursor.callproc("create_leave_request", [leave_request.employee_id,leave_request.leave_start_date,leave_request.period_of_absence,leave_request.reason_for_absence,leave_request.type_of_leave,])
         connection.commit()
-        leave_request_id = leave_request.Leave_Request_ID
-        cursor.execute("SELECT * FROM leave_request WHERE leave_request_id = %s", (leave_request_id,))
-        new_leave_request = cursor.fetchone()
-        return new_leave_request
+
+        return "Leave requested successfully"
 
     except mysql.connector.Error as e:
         connection.rollback()
@@ -60,7 +52,7 @@ def read_leave_request(leave_request_id: int, db=Depends(get_db), current_user=D
         # Enforces JWT token authentication
 ):
     cursor, _ = db
-    cursor.execute("SELECT * FROM Leave_Request WHERE Leave_Request_ID = %s", (leave_request_id,))
+    cursor.execute("SELECT * FROM leave_request WHERE leave_request_id = %s", (leave_request_id,))
     leave_request_record = cursor.fetchone()
     if not leave_request_record:
         raise HTTPException(status_code=404, detail="Leave request not found")
@@ -108,16 +100,15 @@ def delete_leave_request(leave_request_id: int, db=Depends(get_db), current_user
         raise HTTPException(status_code=403, detail="Not authorized to delete leave requests")
 
     try:
-        cursor.execute("DELETE FROM Leave_Request WHERE Leave_Request_ID = %s", (leave_request_id,))
+        cursor.callproc("delete_request", [leave_request_id,])
         connection.commit()
-        return None
+        return "Request deleted successfully"
 
     except mysql.connector.Error as e:
         connection.rollback()
         raise HTTPException(status_code=500, detail=f"Error deleting leave request: {str(e)}")
 
 
-from typing import List
 
 
 @router.get("/supervisor/leave_requests", response_model=List[Leavings.LeaveRequestResponse])

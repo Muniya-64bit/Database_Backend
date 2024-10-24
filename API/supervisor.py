@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from mysql.connector import pooling
 
 from classes import supervisor
-from classes.supervisor import SupervisorWithTeam, Leave_Status
+from classes.supervisor import SupervisorWithTeam, Leave_Status, TeamMember
 from classes.supervisor import supervisor_
 from core.security import get_current_active_user
 
@@ -38,28 +38,44 @@ def get_db():
 
 
 @router.get("/supervisors", response_model=List[supervisor.supervisor_])
-async def all_spervisors(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+async def all_supervisors(db=Depends(get_db), current_user=Depends(get_current_active_user)):
     cursor, connection = db
     try:
-
-        # Check admin status using a stored procedure
-        cursor.execute("SELECT is_admin from user_access where username = %s", (current_user.username,))
+        # Check admin status
+        cursor.execute("SELECT is_admin FROM user_access WHERE username = %s", (current_user.username,))
         is_admin = cursor.fetchone()
-        # Check visibility access
-        if not is_admin:
-            raise HTTPException(status_code=403, detail="Not authorized to view this  information")
 
-        cursor.execute("""
-        select employee.employee_id,employee.name
-        from employee
-        join employee as e
-        where e.supervisor_id = employee.employee_id
-        """)
-        supervisors = cursor.fetchall()
+        # Log admin status to verify the fetch
+        logger.info(f"Admin status for user {current_user.username}: {is_admin}")
 
-        all_supervisor_response = [supervisor_(employee_id=row['employee_id'], name=row['name']
+        # Ensure the user has admin rights
+        if not is_admin :
+            raise HTTPException(status_code=403, detail="Not authorized to view this information")
 
-        ) for row in supervisors]
+        # Call the stored procedure `show_supervisor`
+        logger.info("Calling stored procedure 'show_supervisor'")
+        cursor.callproc('show_supervisor')
+
+        # Fetch the results from the procedure
+        result_cursor = next(cursor.stored_results(), None)
+
+        if result_cursor is None:
+            logger.error("No result set returned from stored procedure 'show_supervisor'")
+            raise HTTPException(status_code=500, detail="No results returned from the stored procedure")
+
+        supervisors = result_cursor.fetchall()
+
+        # Log fetched supervisors for debugging
+        logger.info(f"Supervisors fetched: {supervisors}")
+
+        # Build the response
+        all_supervisor_response = [
+            supervisor_(
+                supervisor_id=row['supervisor_id'],
+                first_name=row['first_name'],
+                last_name = row['last_name']
+            ) for row in supervisors
+        ]
 
         return all_supervisor_response
 
@@ -77,21 +93,20 @@ async def supervisors_with_teams(db=Depends(get_db), current_user=Depends(get_cu
     cursor, connection = db
     try:
         # Check admin status using a stored procedure
-        cursor.execute("SELECT is_admin FROM user_access WHERE username = %s", (current_user.username,))
-        is_admin = cursor.fetchone()
-
+        cursor.execute("SELECT is_supervisor FROM user_access WHERE username = %s", (current_user.username,))
+        is_supervisor = cursor.fetchone()
+        cursor.callproc("get_employee_id_by_username", [current_user.username])
+        supervisor_id = next(cursor.stored_results()).fetchone()
         # Check visibility access
-        if not is_admin or not is_admin['is_admin']:
+        if not is_supervisor :
             raise HTTPException(status_code=403, detail="Not authorized to view this information")
-
         # Fetch all supervisors
         cursor.execute("""
-        SELECT employee.employee_id, employee.name 
-        FROM employee 
-        WHERE employee.employee_id IN (
-            SELECT DISTINCT supervisor_id FROM employee WHERE supervisor_id IS NOT NULL
-        )
-        """)
+        SELECT supervisor.employee_id, employee.first_name,employee.last_name
+        FROM supervisor 
+        join employee
+        on employee.employee_id  = supervisor.employee_id
+        where supervisor_id  = %s ;""",(supervisor_id,))
         supervisors = cursor.fetchall()
 
         all_supervisors_with_teams = []
@@ -161,3 +176,55 @@ async def leave_status(status: Leave_Status, db=Depends(get_db), current_user=De
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
+
+@router.get("/supervisor/team/{supervisor_id}",response_model=List[TeamMember])
+async def supervisor_team(supervisor_id:str,db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    cursor, connection = db
+    try:
+        # Check admin status
+        cursor.execute("SELECT is_supervisor FROM user_access WHERE username = %s", (current_user.username,))
+        is_supervisor = cursor.fetchone()
+
+        # Log admin status to verify the fetch
+        logger.info(f"Admin status for user {current_user.username}: {is_supervisor}")
+
+        # Ensure the user has admin rights
+        if not is_supervisor:
+            raise HTTPException(status_code=403, detail="Not authorized to view this information")
+
+        # Call the stored procedure `show_supervisor`
+        logger.info("Calling stored procedure 'show_all_employee_team'")
+        cursor.callproc('employee_team',[supervisor_id,])
+
+        # Fetch the results from the procedure
+        result_cursor = next(cursor.stored_results(), None)
+
+        if result_cursor is None:
+            logger.error("No result set returned from stored procedure 'show_employee_team'")
+            raise HTTPException(status_code=500, detail="No results returned from the stored procedure")
+
+        employee_team = result_cursor.fetchall()
+
+        # Log fetched supervisors for debugging
+        logger.info(f"employees fetched: {employee_team}")
+
+        # Build the response
+        all_supervisor_response = [
+            TeamMember(
+                employee_id=row['employee_id'],
+                first_name=row['first_name'],
+                last_name=row['last_name']
+            ) for row in employee_team
+        ]
+
+        return all_supervisor_response
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error while fetching supervisors: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
+
+

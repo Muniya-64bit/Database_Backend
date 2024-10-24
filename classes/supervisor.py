@@ -4,8 +4,9 @@ from pydantic import BaseModel
 
 
 class supervisor_(BaseModel):
-    employee_id: str
-    name: str
+    supervisor_id: str
+    first_name: str
+    last_name: str
 
     class Config:
         orm_mode = True
@@ -13,8 +14,8 @@ class supervisor_(BaseModel):
 
 class TeamMember(BaseModel):
     employee_id: str
-    name: str
-
+    first_name: str
+    last_name:str
     class Config:
         orm_mode = True
 
