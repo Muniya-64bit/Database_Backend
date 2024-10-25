@@ -76,7 +76,7 @@ async def create_employee(employee: employee.EmployeeCreate, db=Depends(get_db),
         if not new_employee:
             raise HTTPException(status_code=404, detail="Employee creation failed")
 
-        return {"message": "Employee created successfully", "employee": new_employee}
+        return {"message": "Employee created successfully"}
 
     except mysql.connector.Error as e:
         logger.error(f"Database error while creating employee: {str(e)}")
@@ -140,39 +140,50 @@ async def read_employee(username: str, db=Depends(get_db),
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
 
 #
-#
-@router.delete("/employee/{username}", status_code=status.HTTP_200_OK)
-async def delete_employee(username: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
+@router.delete("/employee/{employee_id}", status_code=status.HTTP_200_OK)
+async def delete_employee(employee_id: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
     cursor, connection = db
 
     try:
+        logger.info(f"Attempting to delete employee with ID: {employee_id} by user: {current_user.username}")
+
+        # Fetch the username of the employee to be deleted
+        cursor.callproc("get_usernme_by_employee_id", [employee_id])
+        username = next(cursor.stored_results()).fetchone()
+
+        if not username:
+            logger.warning(f"Username for employee_id {employee_id} not found")
+            raise HTTPException(status_code=404, detail="Employee username not found")
+
+        logger.info(f"Username for employee_id {employee_id} found: {username}")
+
         # Fetch the employee_id of the current user
         cursor.callproc("get_employee_id_by_username", [current_user.username])
         user_record = next(cursor.stored_results()).fetchone()
 
-        # Fetch the employee_id of the employee to be deleted
-        cursor.callproc("get_employee_id_by_username", [username])
-        employee_record = next(cursor.stored_results()).fetchone()
-
         if not user_record:
-            raise HTTPException(status_code=404, detail="User not found")
+            logger.error(f"Current user {current_user.username} not found")
+            raise HTTPException(status_code=404, detail="Current user not found")
 
-        if not employee_record:
-            raise HTTPException(status_code=404, detail="Employee not found")
+        # Access tuple values
+        current_user_employee_id = user_record['employee_id']  # employee_id of the current user
+        employee_id_to_delete = employee_id  # employee_id of the employee to be deleted
 
-        current_user_employee_id = user_record["employee_id"]
-        employee_id_to_delete = employee_record["employee_id"]
-        cursor.callproc("is_admin",[current_user.username])
+        logger.info(f"User {current_user.username} is attempting to delete employee with ID: {employee_id_to_delete}")
+
+        # Check if the current user is an admin
+        cursor.callproc("is_admin", [current_user.username])
         is_admin = next(cursor.stored_results()).fetchone()
-        # Check visibility access
-        if current_user_employee_id == employee_id_to_delete or not is_admin['is_admin']:
+
+        if not is_admin :  # Access the first value from tuple for is_admin
+            logger.warning(f"User {current_user.username} is not authorized to delete employee {employee_id_to_delete}")
             raise HTTPException(status_code=403, detail="Not authorized to delete this employee")
 
         # Delete the employee
-        cursor.callproc("delete_employee", [current_user_employee_id,employee_id_to_delete])
+        cursor.callproc("delete_employee", [current_user_employee_id, employee_id_to_delete])
         connection.commit()
 
-        logger.info(f"Employee {employee_id_to_delete} deleted successfully")
+        logger.info(f"Employee {employee_id_to_delete} deleted successfully by user {current_user.username}")
 
         return {"message": f"Employee {employee_id_to_delete} deleted successfully"}
 
@@ -184,8 +195,6 @@ async def delete_employee(username: str, db=Depends(get_db), current_user=Depend
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
-
-
 
 
 logger = logging.getLogger(__name__)
@@ -285,7 +294,7 @@ async def get_employee_of_the_month(db=Depends(get_db),
 
         logger.info(f"Employee of the month-->")
 
-        return {"message": f"Employee of the month is {user_record}"}
+        return {"message": user_record}
 
     except mysql.connector.Error as e:
         logger.error(f"Database error while deleting employee: {str(e)}")
@@ -319,9 +328,9 @@ async def get_on_leave(db=Depends(get_db),
 
         connection.commit()
 
-        logger.info(f"Employee of the month-->")
+        logger.info(f"number of employee on leave->")
 
-        return {"message": f"Employee of the month is {on_leave}"}
+        return {"message": on_leave}
 
     except mysql.connector.Error as e:
         logger.error(f"Database error while deleting employee: {str(e)}")
@@ -356,9 +365,9 @@ async def get_on_fulltime(db=Depends(get_db),
 
         connection.commit()
 
-        logger.info(f"Employee of the month-->")
+        logger.info(f"number of employee full time-->")
 
-        return {"message": f"Employee of the month is {full_time}"}
+        return {"message": full_time}
 
     except mysql.connector.Error as e:
         logger.error(f"Database error while deleting employee: {str(e)}")
@@ -387,14 +396,14 @@ async def get_on_halftome(db=Depends(get_db),
         if not user_record:
             raise HTTPException(status_code=404, detail="User not found")
 
-        if not full_time:
+        if not part_time:
             raise HTTPException(status_code=404, detail="Employee not found")
 
         connection.commit()
 
-        logger.info(f"Employee of the month-->")
+        logger.info(f"number of employee part time-->")
 
-        return {"message": f"Employee of the month is {part_time}"}
+        return {"message":  part_time}
 
     except mysql.connector.Error as e:
         logger.error(f"Database error while deleting employee: {str(e)}")
@@ -405,6 +414,54 @@ async def get_on_halftome(db=Depends(get_db),
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
 
+
+
+@router.get("/employee_/{employee_id}", response_model=employee.EmployeeResponse)
+async def read_employee_other(employee_id: str, db=Depends(get_db),
+                        current_user=Depends(get_current_active_user)):
+    cursor, _ = db
+
+    try:
+        # Fetch the employee_id of the current user (currently logged-in user)
+        cursor.callproc("get_employee_id_by_username", [current_user.username])
+        user_record = next(cursor.stored_results()).fetchone()
+
+        if not user_record:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        employee_id = user_record["employee_id"]
+
+        # Check if current user is admin using a separate stored procedure
+        cursor.callproc("is_admin", [current_user.username])
+        admin_record = next(cursor.stored_results()).fetchone()
+        is_admin = admin_record["is_admin"] if admin_record else False
+
+
+
+
+        target_employee_id = employee_id
+
+        # If the current user is not an admin and tries to access another user's data, deny access
+        if not is_admin and current_user.employee_id != target_employee_id:
+            raise HTTPException(status_code=403, detail="Not authorized to view this employee's details")
+
+        # Fetch employee details via stored procedure
+        cursor.callproc("select_employee_details", [target_employee_id])
+        employee_record = next(cursor.stored_results()).fetchone()
+
+        if not employee_record:
+            raise HTTPException(status_code=404, detail="Employee details not found")
+
+        logger.info(f"Fetched employee details for {employee_id}")
+        return employee_record
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error while fetching employee details: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
 
 
 

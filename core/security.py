@@ -86,7 +86,7 @@ def authenticate_user(cursor, username: str, password: str):
 # Token creation
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expires_delta if expires_delta else timedelta(minutes=15))
+    expire = datetime.now(timezone.utc) + (expires_delta if expires_delta else timedelta(minutes=100000))
     to_encode.update({"exp": expire})
 
     if "sub" not in to_encode:

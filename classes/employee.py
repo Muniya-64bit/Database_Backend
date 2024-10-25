@@ -39,25 +39,10 @@ class EmployeeCreate(EmployeeBase):
 
 
 
-class EmployeeResponse(BaseModel):
-    employee_id: str
-    first_name: str
-    last_name: str
-    birthday: Optional[d.datetime] = None  # Will be formatted as a string
-    employee_nic: str
-    gender: str
-    marital_status: str
-    number_of_dependents: int
-    address: str
-    contact_number: str
-    business_email: str
-    job_title: str
-    department_name: str
-    branch_name: str
-    profile_photo: Optional[str] = None
+class EmployeeResponse(EmployeeBase):
+    pass
 
-    class Config:
-        orm_mode = True
+
 
 class EmployeeUpdate(BaseModel):
     employee_id:Optional[str] = None
