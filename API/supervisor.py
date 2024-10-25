@@ -325,7 +325,7 @@ async def all_leaves(db=Depends(get_db), current_user=Depends(get_current_active
         ]
 
         return all_leaves_requests
-
+#
     except mysql.connector.Error as e:
         logger.error(f"Database error while fetching leaves: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")

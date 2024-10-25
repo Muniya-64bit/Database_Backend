@@ -463,6 +463,8 @@ async def read_employee_other(employee_id: str, db=Depends(get_db),
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
 
+#
+
 
 
 

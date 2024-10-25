@@ -95,7 +95,7 @@ async def login_user(user: UserLogin, db=Depends(get_db), ):
         if result_cursor is None:
             logger.error(f"No result set returned from stored procedure 'role_checker'")
             raise HTTPException(status_code=500, detail="Error determining user role")
-
+#
         role_row = result_cursor.fetchone()
         if role_row is None :
             logger.error(f"No role returned for username {user.username}")

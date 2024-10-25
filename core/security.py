@@ -82,7 +82,7 @@ def authenticate_user(cursor, username: str, password: str):
     if not user or not verify_password(password, user['password']):
         return False
     return user
-
+#
 # Token creation
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()

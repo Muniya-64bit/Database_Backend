@@ -59,7 +59,7 @@ def read_leave_request(leave_request_id: int, db=Depends(get_db), current_user=D
 
     return leave_request_record
 
-
+#
 # Endpoint to update leave request details (accessible by supervisors)
 @router.put("/leave/request/{leave_request_id}", response_model=Leavings.LeaveRequestResponse)
 def update_leave_request(leave_request_id: int, leave_request: Leavings.LeaveRequestUpdate, db=Depends(get_db),
