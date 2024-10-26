@@ -1,38 +1,18 @@
 import logging
-import os
-from datetime import datetime
+
 
 import mysql.connector
-from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status,Body
-from pydantic import BaseModel
 
 from classes.User import User, UserLogin, LoginResponse,UpdatePassword
 from core.security import pwd_context, verify_password, create_access_token, get_current_active_user
+from db.db import get_db
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-# Database connection dependency
-load_dotenv()
-
-
-def get_db():
-    connection = mysql.connector.connect(host=os.getenv('DB_HOST'), user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'), database=os.getenv('DB_NAME'))
-    cursor = connection.cursor(dictionary=True)
-    try:
-        yield cursor, connection
-    finally:
-        cursor.close()
-        connection.close()
-
-
-# Pydantic model for access update
-
 
 # # Endpoint to register a new user
 @router.post("/user/reg", status_code=status.HTTP_201_CREATED)

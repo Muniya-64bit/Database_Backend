@@ -1,10 +1,5 @@
-from datetime import date;
-from datetime import time;
-from typing import Optional
-
 from pydantic import BaseModel
 
-#
 class User(BaseModel):
     username: str
     password: str
