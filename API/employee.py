@@ -1,16 +1,12 @@
-import logging
 import uuid
-
 import mysql.connector
 from fastapi import APIRouter, Depends, HTTPException, status
-
 from classes import employee
+from core.middleware import logger
 from core.security import get_current_active_user
 from db.db import get_db
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
 
 # Query for counting absent employees
 router = APIRouter()
@@ -271,106 +267,7 @@ async def get_employee_of_the_month(db=Depends(get_db), current_user=Depends(get
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
 
 
-@router.get("/on_leave")
-async def get_on_leave(db=Depends(get_db), current_user=Depends(get_current_active_user)):
-    cursor, connection = db
-    try:
-        # Fetch the employee_id of the current user
-        cursor.callproc("get_employee_id_by_username", [current_user.username])
-        user_record = next(cursor.stored_results()).fetchone()
 
-        # Fetch the employee_id of the employee to be deleted
-        cursor.callproc("get_leave_count")
-        on_leave = next(cursor.stored_results()).fetchone()
-
-        if not user_record:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        if not on_leave:
-            raise HTTPException(status_code=404, detail="Employee not found")
-
-        connection.commit()
-
-        logger.info(f"number of employee on leave->")
-
-        return {"message": on_leave}
-
-    except mysql.connector.Error as e:
-        logger.error(f"Database error while deleting employee: {str(e)}")
-        connection.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
-
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
-
-
-@router.get("/today_full_time")
-async def get_on_fulltime(db=Depends(get_db), current_user=Depends(get_current_active_user)):
-    cursor, connection = db
-    try:
-        # Fetch the employee_id of the current user
-        cursor.callproc("get_employee_id_by_username", [current_user.username])
-        user_record = next(cursor.stored_results()).fetchone()
-
-        # Fetch the employee_id of the employee to be deleted
-        cursor.callproc("get_fulltime_employee_count_presentage")
-        full_time = next(cursor.stored_results()).fetchone()
-
-        if not user_record:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        if not full_time:
-            raise HTTPException(status_code=404, detail="Employee not found")
-
-        connection.commit()
-
-        logger.info(f"number of employee full time-->")
-
-        return {"message": full_time}
-
-    except mysql.connector.Error as e:
-        logger.error(f"Database error while deleting employee: {str(e)}")
-        connection.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
-
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
-
-
-@router.get("/today_half_time")
-async def get_on_halftome(db=Depends(get_db), current_user=Depends(get_current_active_user)):
-    cursor, connection = db
-    try:
-        # Fetch the employee_id of the current user
-        cursor.callproc("get_employee_id_by_username", [current_user.username])
-        user_record = next(cursor.stored_results()).fetchone()
-
-        # Fetch the employee_id of the employee to be deleted
-        cursor.callproc("get_parttime_employee_count_presentage")
-        part_time = next(cursor.stored_results()).fetchone()
-
-        if not user_record:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        if not part_time:
-            raise HTTPException(status_code=404, detail="Employee not found")
-
-        connection.commit()
-
-        logger.info(f"number of employee part time-->")
-
-        return {"message": part_time}
-
-    except mysql.connector.Error as e:
-        logger.error(f"Database error while deleting employee: {str(e)}")
-        connection.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
-
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
 
 
 @router.get("/employee_/{employee_id}", response_model=employee.EmployeeResponse)
