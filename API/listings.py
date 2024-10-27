@@ -356,7 +356,7 @@ def graph_by_gender(db=Depends(get_db), current_user=Depends(get_current_active_
                           for row in results]
 
         logger.info("Fetched pie chart data by gender successfully")
-
+#s
         return pie_chart_data
 
     except mysql.connector.Error as e:
