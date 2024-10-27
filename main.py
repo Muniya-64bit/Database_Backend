@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from API import employee, users,leavings,supervisor,listings
+from API import employee, users,Leavings,supervisor,listings
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -13,7 +13,7 @@ app.add_middleware(
 )
 app.include_router(employee.router)
 app.include_router(users.router)
-app.include_router(leavings.router)
+app.include_router(Leavings.router)
 app.include_router(supervisor.router)
 app.include_router(listings.router)
 

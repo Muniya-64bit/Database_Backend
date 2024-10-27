@@ -41,4 +41,4 @@ class LeaveRequestResponse(BaseModel):
     request_status: str
 
     class Config:
-        from_attributes = True
+        orm_mode = True

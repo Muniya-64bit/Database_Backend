@@ -61,7 +61,8 @@ async def create_employee(employee: employee.EmployeeCreate, db=Depends(get_db),
 
 
 @router.get("/employee/{username}", response_model=employee.EmployeeResponse)
-async def read_employee(username: str, db=Depends(get_db), current_user=Depends(get_current_active_user)):
+async def read_employee(username: str, db=Depends(get_db),
+                        current_user=Depends(get_current_active_user)):
     cursor, _ = db
 
     try:
@@ -75,9 +76,6 @@ async def read_employee(username: str, db=Depends(get_db), current_user=Depends(
         employee_id = user_record["employee_id"]
 
         # Check if current user is admin using a separate stored procedure
-        cursor.callproc("is_admin", [current_user.username])
-        admin_record = next(cursor.stored_results()).fetchone()
-        is_admin = admin_record["is_admin"] if admin_record else False
 
         # Fetch the target employee's employee_id by their username
         cursor.callproc("get_employee_id_by_username", [username])
@@ -87,10 +85,6 @@ async def read_employee(username: str, db=Depends(get_db), current_user=Depends(
             raise HTTPException(status_code=404, detail="Employee not found")
 
         target_employee_id = target_employee_record["employee_id"]
-
-        # If the current user is not an admin and tries to access another user's data, deny access
-        if not is_admin and current_user.employee_id != target_employee_id:
-            raise HTTPException(status_code=403, detail="Not authorized to view this employee's details")
 
         # Fetch employee details via stored procedure
         cursor.callproc("select_employee_details", [target_employee_id])
@@ -109,7 +103,6 @@ async def read_employee(username: str, db=Depends(get_db), current_user=Depends(
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Unexpected error: {str(e)}")
-
 
 #
 @router.delete("/employee/{employee_id}", status_code=status.HTTP_200_OK)
@@ -285,14 +278,14 @@ async def read_employee_other(employee_id: str, db=Depends(get_db), current_user
         employee_id = user_record["employee_id"]
 
         # Check if current user is admin using a separate stored procedure
-        cursor.callproc("is_admin", [current_user.username])
+        cursor.callproc("is_supervisor", [current_user.username])
         admin_record = next(cursor.stored_results()).fetchone()
-        is_admin = admin_record["is_admin"] if admin_record else False
+        is_supervisor = admin_record["is_supervisor"] if admin_record else False
 
         target_employee_id = employee_id
 
         # If the current user is not an admin and tries to access another user's data, deny access
-        if not is_admin and current_user.employee_id != target_employee_id:
+        if not is_supervisor and current_user.employee_id != target_employee_id:
             raise HTTPException(status_code=403, detail="Not authorized to view this employee's details")
 
         # Fetch employee details via stored procedure
