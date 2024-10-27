@@ -1,6 +1,8 @@
 import datetime as d
 from typing import Optional
+
 from pydantic import BaseModel
+
 
 #
 class EmployeeBase(BaseModel):
@@ -20,31 +22,27 @@ class EmployeeBase(BaseModel):
     department_name: str
     branch_name: str
     profile_photo: Optional[str] = None
-    emergency_contact_name:str
+    emergency_contact_name: str
     emergency_contact_nic: str
     emergency_contact_address: str
     emergency_contact_number: str
+
     # Emergency contact details
 
-
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class EmployeeCreate(EmployeeBase):
     pass
 
 
-
-
-
 class EmployeeResponse(EmployeeBase):
     pass
 
 
-
 class EmployeeUpdate(BaseModel):
-    employee_id:Optional[str] = None
+    employee_id: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     birthday: Optional[d.datetime] = None
@@ -60,4 +58,28 @@ class EmployeeUpdate(BaseModel):
     branch_id: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+
+class Pie_graph_gender(BaseModel):
+    gender: str
+    presentage_by_gender: float
+
+    class Config:
+        from_attributes = True
+
+
+class Pie_graph_role(BaseModel):
+    role: str
+    presentage_by_role: float
+
+    class Config:
+        from_attributes = True
+
+
+class Pie_graph_pay_grade(BaseModel):
+    pay_grade: int
+    presentage_by_pay_grade: float
+
+    class Config:
+        from_attributes = True

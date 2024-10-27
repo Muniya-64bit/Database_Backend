@@ -10,6 +10,9 @@ class LeaveRequestBase(BaseModel):
     reason_for_absence: str
     type_of_leave: str
 
+    class Config:
+        from_attributes = True
+
 class LeaveRequestCreate(LeaveRequestBase):
     pass
 
@@ -19,6 +22,9 @@ class LeaveRequestUpdate(BaseModel):
     Reason_for_Absence: Optional[str]
     Type_of_Leave: Optional[str]
     Request_Status: Optional[str]
+
+    class Config:
+        from_attributes = True
 
 
 class LeaveRequestResponse(BaseModel):
@@ -35,4 +41,4 @@ class LeaveRequestResponse(BaseModel):
     request_status: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True

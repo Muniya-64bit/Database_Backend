@@ -1,74 +1,86 @@
-import pytest
-from httpx import AsyncClient
-from main import app  # Import your FastAPI app here
-from unittest.mock import AsyncMock, patch
+import unittest
+from unittest.mock import Mock, patch
+from fastapi.testclient import TestClient
+from main import app
+from classes.User import User, UserLogin, UpdatePassword
+client = TestClient(app)
 
-# Mock database dependency
-@pytest.fixture
-def mock_db():
-    mock_cursor = AsyncMock()
-    mock_connection = AsyncMock()
-    return (mock_cursor, mock_connection)
 
-# Client to test async routes
-@pytest.fixture
-async def client():
-    async with AsyncClient(app=app, base_url="http://test") as c:
-        yield c
+class TestCreateUser(unittest.TestCase):
+    @patch("your_module.get_db")
+    @patch("your_module.pwd_context")
+    def test_create_user(self, mock_pwd_context, mock_get_db):
+        # Mocking DB and hashing
+        mock_cursor = Mock()
+        mock_connection = Mock()
+        mock_get_db.return_value = (mock_cursor, mock_connection)
+        mock_pwd_context.hash.return_value = "hashed_password"
 
-# Test user registration
-@pytest.mark.asyncio
-async def test_create_user(client, mock_db):
-    with patch("db/db.py", return_value=mock_db):
-        mock_db[0].fetchone.return_value = {"username": "Umesha", "password": "Umesha"}
-
-        response = await client.post(
-            "/user/reg",
-            json={
-                "username": "testuser",
-                "password": "testpassword",
-                "employee_id": '86ceb943-cbb1-4caa-b259-15e2ed687ae2',
-                "access_level": "employee"
-            },
-        )
-        assert response.status_code == 201
-        assert response.json() == {
-            "message": "User registered successfully",
-            "user": {"username": "testuser", "password": "testpassword"}
+        user_data = {
+            "username": "testuser",
+            "password": "testpassword",
+            "employee_id": 1,
+            "access_level": 2
         }
 
-# Test login
-@pytest.mark.asyncio
-async def test_login_user(client, mock_db):
-    with patch("path.to.get_db", return_value=mock_db):
-        mock_db[0].fetchone.return_value = {"username": "testuser", "password": "hashed_pwd"}
-        mock_db[0].stored_results.return_value = [{"user_role": "admin"}]
+        response = client.post("/user/reg", json=user_data)
 
-        response = await client.post(
-            "/login",
-            json={
-                "username": "testuser",
-                "password": "testpassword"
-            },
+        # Simulate stored procedure and DB responses
+        mock_cursor.callproc.assert_called_once_with("create_user_account", ["testuser", "hashed_password", 1, 2])
+        mock_cursor.execute.assert_called_once_with("SELECT * FROM users WHERE username = %s", ("testuser",))
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["message"], "User registered successfully")
+
+
+class TestLoginUser(unittest.TestCase):
+    @patch("db.db.get_db")
+    @patch("core.security.verify_password")
+    @patch("core.security.create_access_token")
+    def test_login_user(self, mock_create_access_token, mock_verify_password, mock_get_db):
+        # Mocking DB and security functions
+        mock_cursor = Mock()
+        mock_connection = Mock()
+        mock_get_db.return_value = (mock_cursor, mock_connection)
+        mock_verify_password.return_value = True
+
+        user_data = {
+            "username": "Umesha",
+            "password": "Umesha"
+        }
+
+        # Mock DB responses
+        mock_cursor.fetchone.return_value = {"username": "Umesha", "password": "Umesha"}
+        mock_cursor.stored_results.return_value = iter([Mock(fetchone=lambda: {"user_role": "admin"})])
+
+        response = client.post("/login", json=user_data)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["username"], "Umesha")
+        self.assertEqual(response.json()["role"], "admin")
+
+
+class TestUpdateUserPassword(unittest.TestCase):
+    @patch("db.db.get_db")
+    @patch("core.security.verify_password")
+    def test_update_user_password(self, mock_get_current_active_user, mock_get_db):
+        # Mock DB and current user
+        mock_cursor = Mock()
+        mock_connection = Mock()
+        mock_get_db.return_value = (mock_cursor, mock_connection)
+        mock_get_current_active_user.return_value = {"username": "admin"}
+
+        new_password_data = {"password": "newpassword"}
+
+        response = client.put("/user/testuser", json=new_password_data)
+
+        mock_cursor.execute.assert_called_once_with(
+            "UPDATE users SET password = %s WHERE username = %s",
+            ("newpassword", "testuser")
         )
-        assert response.status_code == 200
-        data = response.json()
-        assert "token" in data
-        assert data["role"] == "admin"
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["message"], "User access updated successfully")
 
-# Test update user access
-@pytest.mark.asyncio
-async def test_update_user_access(client, mock_db):
-    with patch("path.to.get_db", return_value=mock_db):
-        # Mock admin check and existing user
-        mock_db[0].fetchone.side_effect = [
-            {"username": "testuser"},  # Target user fetch
-            {"is_admin": True}         # Admin check fetch
-        ]
 
-        response = await client.put(
-            "/user/testuser",
-            json={"password": "newpassword"}
-        )
-        assert response.status_code == 200
-        assert response.json() == {"message": "User access updated successfully"}
+if __name__ == '__main__':
+    unittest.main()

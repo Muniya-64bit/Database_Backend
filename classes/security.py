@@ -21,7 +21,7 @@ class User(BaseModel):
     disabled: Optional[bool] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserInDB(BaseModel):
@@ -32,4 +32,4 @@ class UserInDB(BaseModel):
     disabled: Optional[bool] = None
 
     class Config:
-        orm_mode = True  # Add hashed_password field to store the hashed password in DB
+        from_attributes = True  # Add hashed_password field to store the hashed password in DB

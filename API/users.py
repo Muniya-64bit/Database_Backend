@@ -1,16 +1,12 @@
-import logging
-
 
 import mysql.connector
 from fastapi import APIRouter, Depends, HTTPException, status,Body
-
 from classes.User import User, UserLogin, LoginResponse,UpdatePassword
+from core.middleware import logger
 from core.security import pwd_context, verify_password, create_access_token, get_current_active_user
 from db.db import get_db
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 
@@ -109,7 +105,7 @@ async def login_user(user: UserLogin, db=Depends(get_db), ):
 
 
 @router.put("/user/{username}", status_code=status.HTTP_200_OK)
-async def update_user_access(
+async def update_user_password(
         username: str,
         password_: UpdatePassword = Body(...),  # Use Body to specify the request body
         db=Depends(get_db),
@@ -117,31 +113,16 @@ async def update_user_access(
 ):
     cursor, connection = db
     try:
-        # Get the target user's current access information
-        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
-        target_user = cursor.fetchone()
 
-        # Check if current user is admin
-        cursor.execute("SELECT is_admin FROM user_access WHERE username = %s", (current_user.username,))
-        is_admin_record = cursor.fetchone()
-        is_admin = is_admin_record["is_admin"] if is_admin_record else False
-
-        if not is_admin:
-            raise HTTPException(status_code=403, detail="User is not an admin.")
-
-        if not target_user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        # Update the user's password (ensure you hash the password in a real application)
         cursor.execute(
             "UPDATE users SET password = %s WHERE username = %s",
-            (password_.password, target_user['username'])  # Assuming 'user_id' is the correct key
+            (password_.password, username)  # Assuming 'user_id' is the correct key
         )
         connection.commit()
 
         logger.info(f"Access updated for user {username}")
         return {"message": "User access updated successfully"}
-###
+
     except mysql.connector.Error as e:
         connection.rollback()
         logger.error(f"Database error updating access for user {username}: {str(e)}")

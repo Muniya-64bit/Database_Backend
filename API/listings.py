@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from classes import supervisor
 from classes.Leavings import LeaveRequestResponse
+from classes.employee import Pie_graph_gender, Pie_graph_pay_grade, Pie_graph_role
 from classes.supervisor import supervisor_, TeamMember
 from core.middleware import logger
 from core.security import get_current_active_user
@@ -254,7 +255,7 @@ async def get_on_leave(db=Depends(get_db), current_user=Depends(get_current_acti
         return {"message": on_leave}
 
     except mysql.connector.Error as e:
-        logger.error(f"Database error while deleting employee: {str(e)}")
+        logger.error(f"Database error while fetching  data: {str(e)}")
         connection.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
 
@@ -264,7 +265,7 @@ async def get_on_leave(db=Depends(get_db), current_user=Depends(get_current_acti
 
 
 @router.get("/today_full_time")
-async def get_on_fulltime(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+def get_on_fulltime(db=Depends(get_db), current_user=Depends(get_current_active_user)):
     cursor, connection = db
     try:
         # Fetch the employee_id of the current user
@@ -288,7 +289,7 @@ async def get_on_fulltime(db=Depends(get_db), current_user=Depends(get_current_a
         return {"message": full_time}
 
     except mysql.connector.Error as e:
-        logger.error(f"Database error while deleting employee: {str(e)}")
+        logger.error(f"Database error while fetching  data: {str(e)}")
         connection.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
 
@@ -298,7 +299,7 @@ async def get_on_fulltime(db=Depends(get_db), current_user=Depends(get_current_a
 
 
 @router.get("/today_half_time")
-async def get_on_halftome(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+def get_on_halftome(db=Depends(get_db), current_user=Depends(get_current_active_user)):
     cursor, connection = db
     try:
         # Fetch the employee_id of the current user
@@ -322,7 +323,122 @@ async def get_on_halftome(db=Depends(get_db), current_user=Depends(get_current_a
         return {"message": part_time}
 
     except mysql.connector.Error as e:
-        logger.error(f"Database error while deleting employee: {str(e)}")
+        logger.error(f"Database error while fetching  data: {str(e)}")
+        connection.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
+
+
+
+@router.get("/pie_graph_gender", response_model=List[Pie_graph_gender])
+def graph_by_gender(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    cursor, connection = db
+    try:
+        # Fetch the employee_id of the current user
+        cursor.callproc("get_employee_id_by_username", [current_user.username])
+        user_record = next(cursor.stored_results()).fetchone()
+
+        if not user_record:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Fetch the gender percentages for employees
+        cursor.callproc("employees_by_gender_presentages")
+        results = next(cursor.stored_results()).fetchall()  # Assuming multiple rows are returned
+
+        if not results:
+            raise HTTPException(status_code=404, detail="No gender data found")
+
+        # Convert the results into a list of Pie_graph_gender instances
+        pie_chart_data = [Pie_graph_gender(gender=row["gender"], presentage_by_gender=row["presentage_by_gender"])
+                          for row in results]
+
+        logger.info("Fetched pie chart data by gender successfully")
+
+        return pie_chart_data
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error while fetching graph data: {str(e)}")
+        connection.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
+
+
+
+
+@router.get("/pie_graph_paygrade", response_model=List[Pie_graph_pay_grade])
+def graph_by_paygrade(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    cursor, connection = db
+    try:
+        # Fetch the employee_id of the current user
+        cursor.callproc("get_employee_id_by_username", [current_user.username])
+        user_record = next(cursor.stored_results()).fetchone()
+
+        if not user_record:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Fetch the pay grade percentages for employees
+        cursor.callproc("employees_by_pay_grade_presentages")
+        paygrade_results = next(cursor.stored_results()).fetchall()  # Assuming multiple rows are returned
+
+        if not paygrade_results:
+            raise HTTPException(status_code=404, detail="No pay grade data found")
+
+        # Convert the results into a list of PieGraphPayGrade instances
+        pie_chart_data = [
+            Pie_graph_pay_grade(pay_grade=row["pay_grade"], presentage_by_pay_grade=row["presentage_by_pay_grade"])
+            for row in paygrade_results
+        ]
+
+        logger.info("Fetched pie chart data by pay grade successfully")
+
+        return pie_chart_data
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error while fetching graph data: {str(e)}")
+        connection.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
+
+
+@router.get("/pie_graph_role", response_model=List[Pie_graph_role])
+def graph_by_role(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    cursor, connection = db
+    try:
+        # Fetch the employee_id of the current user
+        cursor.callproc("get_employee_id_by_username", [current_user.username])
+        user_record = next(cursor.stored_results()).fetchone()
+
+        if not user_record:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Fetch the role percentages for employees
+        cursor.callproc("employees_by_role_presentages")
+        role_results = next(cursor.stored_results()).fetchall()  # Assuming multiple rows are returned
+
+        if not role_results:
+            raise HTTPException(status_code=404, detail="No role data found")
+
+        # Convert the results into a list of PieGraphRole instances
+        pie_chart_data = [
+            Pie_graph_role(role=row["job_title"], presentage_by_role=row["presentage_by_role"])
+            for row in role_results
+        ]
+
+        logger.info("Fetched pie chart data by role successfully")
+
+        return pie_chart_data
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error while fetching graph data: {str(e)}")
         connection.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
 

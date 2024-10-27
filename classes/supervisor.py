@@ -8,15 +8,16 @@ class supervisor_(BaseModel):
     last_name: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TeamMember(BaseModel):
     employee_id: str
     first_name: str
     last_name:str
+
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 #
 class SupervisorWithTeam(BaseModel):
@@ -24,7 +25,7 @@ class SupervisorWithTeam(BaseModel):
     team: List[TeamMember]  # A list of team members
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class Leave_Status(BaseModel):
@@ -32,4 +33,4 @@ class Leave_Status(BaseModel):
     status_: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True

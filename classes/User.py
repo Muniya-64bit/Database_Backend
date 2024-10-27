@@ -6,7 +6,7 @@ class User(BaseModel):
     employee_id: str
     access_level :str
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserLogin(BaseModel):
@@ -14,7 +14,7 @@ class UserLogin(BaseModel):
     password: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class LoginResponse(BaseModel):
@@ -23,7 +23,7 @@ class LoginResponse(BaseModel):
     role:str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserResponse(BaseModel):
@@ -34,8 +34,8 @@ class UserResponse(BaseModel):
 
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 class UpdatePassword(BaseModel):
     password: str
     class Config:
-        orm_mode = True
+        from_attributes = True
