@@ -1,6 +1,6 @@
 import datetime as d
 from typing import Optional
-
+from decimal import Decimal
 from pydantic import BaseModel
 
 
@@ -80,6 +80,14 @@ class Pie_graph_role(BaseModel):
 class Pie_graph_pay_grade(BaseModel):
     pay_grade: int
     presentage_by_pay_grade: float
+
+    class Config:
+        from_attributes = True
+
+
+class Pie_graph_pay_department(BaseModel):
+    department_name: str
+    presentage_by_department: Decimal
 
     class Config:
         from_attributes = True

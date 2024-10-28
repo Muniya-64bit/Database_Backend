@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from classes import supervisor
 from classes.Leavings import LeaveRequestResponse
-from classes.employee import Pie_graph_gender, Pie_graph_pay_grade, Pie_graph_role
+from classes.employee import Pie_graph_gender, Pie_graph_pay_grade, Pie_graph_role, Pie_graph_pay_department
 from classes.supervisor import supervisor_, TeamMember
 from core.middleware import logger
 from core.security import get_current_active_user
@@ -441,6 +441,46 @@ def graph_by_role(db=Depends(get_db), current_user=Depends(get_current_active_us
         logger.error(f"Database error while fetching graph data: {str(e)}")
         connection.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Database error: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Unexpected error occurred")
+
+
+
+
+@router.get("/pie_graph_department", response_model=List[Pie_graph_pay_department])
+def get_pie_graph_department(db=Depends(get_db), current_user=Depends(get_current_active_user)):
+    cursor, _ = db
+
+    try:
+        # Call stored procedure or execute SQL query
+        cursor.callproc('employee_by_department_presentages')
+        department_data = next(cursor.stored_results()).fetchall()
+
+        if not department_data:
+            raise HTTPException(status_code=404, detail="No department data found")
+
+        # Validate and map SQL query results to the PieGraphPayDepartment model
+        pie_graph_response = []
+        for row in department_data:
+            # Ensure 'presentage_by_department' is present
+            if 'presentage_by_department' not in row:
+                logger.error("Missing 'presentage_by_department' field in database response")
+                raise HTTPException(status_code=500, detail="Missing 'presentage_by_department' field in response")
+
+            pie_graph_response.append(
+                Pie_graph_pay_department(
+                    department_name=row['department_name'],
+                    presentage_by_department=row['presentage_by_department']
+                )
+            )
+
+        return pie_graph_response
+
+    except mysql.connector.Error as e:
+        logger.error(f"Database error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error occurred")
 
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
